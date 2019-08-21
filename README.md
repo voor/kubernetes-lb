@@ -9,7 +9,7 @@ Create a `terraform.tfvars` file that contains the following:
 cluster_name = "system"
 
 # pks cluster ${CLUSTER_NAME} --json | jq -c -r .kubernetes_master_ips
-ip_address = ["10.0.8.6"]
+kubernetes_master_ips = ["10.0.8.6"]
 
 # Retrieved from AWS console
 vpc_id = "vpc-00000000"

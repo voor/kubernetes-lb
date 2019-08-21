@@ -12,7 +12,7 @@ variable "cluster_host" {
   default     = ""
 }
 
-variable "ip_address" {
+variable "kubernetes_master_ips" {
   type = "list"
 }
 
@@ -70,10 +70,10 @@ resource "aws_lb_target_group" "k8s_api_8443" {
 
 resource "aws_lb_target_group_attachment" "k8s_api_8443_attachment" {
   target_group_arn = "${aws_lb_target_group.k8s_api_8443.arn}"
-  target_id        = "${element(var.ip_address, count.index)}"
+  target_id        = "${element(var.kubernetes_master_ips, count.index)}"
   port             = 8443
 
-  count = "${length(var.ip_address)}"
+  count = "${length(var.kubernetes_master_ips)}"
 }
 
 resource "aws_route53_record" "k8s_api_dns" {
@@ -98,6 +98,6 @@ output "cluster_name" {
   value = "${var.cluster_name}"
 }
 
-output "ip_address" {
-  value = "${var.ip_address}"
+output "kubernetes_master_ips" {
+  value = "${var.kubernetes_master_ips}"
 }
