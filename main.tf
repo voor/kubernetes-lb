@@ -16,7 +16,7 @@ variable "cluster_host" {
   default     = ""
 }
 
-variable "uuid" {
+variable "cluster_uuid" {
   default = ""
 }
 
@@ -99,14 +99,14 @@ resource "aws_route53_record" "k8s_api_dns" {
 }
 
 resource "null_resource" "subnet_tags" {
-  count = "${var.uuid != "" ? length(var.public_subnet_ids) : 0}"
+  count = "${var.cluster_uuid != "" ? length(var.public_subnet_ids) : 0}"
   provisioner "local-exec" {
-    command = "aws ec2 create-tags --resources ${element(var.public_subnet_ids, count.index)} --tags Key=kubernetes.io/cluster/service-instance_${var.uuid},Value=shared"
+    command = "aws ec2 create-tags --resources ${element(var.public_subnet_ids, count.index)} --tags Key=kubernetes.io/cluster/service-instance_${var.cluster_uuid},Value=shared"
   }
 
   provisioner "local-exec" {
     when = "destroy"
-    command = "aws ec2 delete-tags --resources ${element(var.public_subnet_ids, count.index)} --tags Key=kubernetes.io/cluster/service-instance_${var.uuid},Value=shared"
+    command = "aws ec2 delete-tags --resources ${element(var.public_subnet_ids, count.index)} --tags Key=kubernetes.io/cluster/service-instance_${var.cluster_uuid},Value=shared"
   }
 }
 

@@ -17,6 +17,10 @@ vpc_id = "vpc-00000000"
 # Retrieved from AWS console
 public_subnet_ids = ["subnet-000000000", "subnet-000000001"]
 
+# Optional, this will add the necessary tags on the public subnet for load balancers.
+# pks cluster system --json | jq -c -r .uuid
+cluster_uuid = "000000000000000"
+
 # Optional if using Route 53
 # pks cluster ${CLUSTER_NAME} --json | jq -c -r ".parameters.kubernetes_master_host"
 cluster_host = "system.pks.dev.example.com"
