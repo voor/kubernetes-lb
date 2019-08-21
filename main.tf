@@ -10,19 +10,33 @@ variable "cluster_name" {}
 
 variable "cluster_host" {}
 
-variable "instances" {
+variable "ip_address" {
   type = "list"
 }
 
-variable "use_route53" {
-  default     = true
-  description = "Indicate whether or not to enable route53"
+variable "vpc_id" {
+  description = "PKS installation VPC id"
+}
+
+variable "tags" {
+  description = "PKS installation VPC id"
+  type = "map"
+}
+
+variable "dns_zone_id" {
+  default     = ""
+  description = "Zone ID for Route 53 hosted zone, no entry set if this is empty"
+}
+
+variable "public_subnet_ids" {
+  description = "Public subnets where the ELB should be added."
+  type = "list"
 }
 
 resource "aws_security_group" "k8s_api_security" {
-  name        = "k8s-api-${var.cluster_name}-allow-all-${data.terraform_remote_state.pks.vpc_id}"
+  name        = "k8s-api-${var.cluster_name}-allow-all-${var.vpc_id}"
   description = "Allow all inbound traffic to k8s masters for ${var.cluster_name} API server"
-  vpc_id      = "${data.terraform_remote_state.pks.vpc_id}"
+  vpc_id      = "${var.vpc_id}"
 
   ingress {
     from_port   = 8443
@@ -38,57 +52,61 @@ resource "aws_security_group" "k8s_api_security" {
     to_port     = 0
   }
 
-  tags = "${merge(data.terraform_remote_state.pks.tags, map("Name", "k8s-api-${var.cluster_name}-allow-all-${data.terraform_remote_state.pks.vpc_id}"))}"
+  tags = "${merge(var.tags, map("Name", "k8s-api-${var.cluster_name}-allow-all-${var.vpc_id}"))}"
 }
 
-resource "aws_elb" "k8s_api" {
-  name                      = "k8s-api-${var.cluster_name}"
-  cross_zone_load_balancing = true
+resource "aws_lb" "k8s_api" {
+  name                             = "k8s-api-${var.cluster_name}"
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = true
+  internal                         = false
+  subnets                          = ["${var.public_subnet_ids}"]
 
-  instances = "${var.instances}"
-
-  health_check {
-    healthy_threshold   = 6
-    unhealthy_threshold = 3
-    interval            = 5
-    target              = "TCP:8443"
-    timeout             = 3
-  }
-
-  idle_timeout = 3600
-
-  listener {
-    instance_port     = 8443
-    instance_protocol = "tcp"
-    lb_port           = 8443
-    lb_protocol       = "tcp"
-  }
-
-  tags            = "${data.terraform_remote_state.pks.tags}"
-  security_groups = ["${aws_security_group.k8s_api_security.id}"]
-  subnets         = ["${data.terraform_remote_state.pks.public_subnets}"]
+  tags = "${var.tags}"
 }
 
-resource "aws_route53_record" "pks_api_dns" {
-  zone_id = "${data.terraform_remote_state.pks.dns_zone_id}"
+resource "aws_lb_listener" "k8s_api_8443" {
+  load_balancer_arn = "${aws_lb.k8s_api.arn}"
+  port              = 8443
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = "${aws_lb_target_group.k8s_api_8443.arn}"
+  }
+}
+
+resource "aws_lb_target_group" "k8s_api_8443" {
+  name     = "${var.cluster_name}-k8s-tg-8443"
+  port     = 8443
+  protocol = "TCP"
+  vpc_id   = "${var.vpc_id}"
+
+  target_type = "ip"
+
+  tags = "${var.tags}"
+}
+
+resource "aws_lb_target_group_attachment" "k8s_api_8443_attachment" {
+  target_group_arn = "${aws_lb_target_group.k8s_api_8443.arn}"
+  target_id        = "${element(var.ip_address, count.index)}"
+  port             = 8443
+
+  count = "${length(var.ip_address)}"
+}
+
+resource "aws_route53_record" "k8s_api_dns" {
+  zone_id = "${var.dns_zone_id}"
   name    = "${var.cluster_host}"
   type    = "A"
 
   alias {
-    name                   = "${aws_elb.k8s_api.dns_name}"
-    zone_id                = "${aws_elb.k8s_api.zone_id}"
+    name                   = "${aws_lb.k8s_api.dns_name}"
+    zone_id                = "${aws_lb.k8s_api.zone_id}"
     evaluate_target_health = true
   }
 
-  count = "${var.use_route53 ? 1 : 0}"
-}
-
-data "terraform_remote_state" "pks" {
-  backend = "local"
-
-  config {
-    path = "${path.module}/../env-state-aws/terraform.tfstate"
-  }
+  count = "${var.dns_zone_id != "" ? 1 : 0}"
 }
 
 output "cluster_host" {
@@ -99,7 +117,6 @@ output "cluster_name" {
   value = "${var.cluster_name}"
 }
 
-output "instances" {
-  value = "${var.instances}"
+output "ip_address" {
+  value = "${var.ip_address}"
 }
-
