@@ -21,7 +21,7 @@ variable "vpc_id" {
 }
 
 variable "tags" {
-  default = ""
+  default = {}
   description = "PKS installation VPC id"
   type = "map"
 }
