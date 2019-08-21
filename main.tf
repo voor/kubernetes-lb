@@ -2,6 +2,10 @@ provider "aws" {
   version = "~> 1.60"
 }
 
+provider "null" {
+  version = "~> 2.1"
+}
+
 terraform {
   required_version = "< 0.12.0"
 }
@@ -10,6 +14,10 @@ variable "cluster_name" {}
 
 variable "cluster_host" {
   default     = ""
+}
+
+variable "uuid" {
+  default = ""
 }
 
 variable "kubernetes_master_ips" {
@@ -90,6 +98,18 @@ resource "aws_route53_record" "k8s_api_dns" {
   count = "${var.dns_zone_id != "" && var.cluster_host != "" ? 1 : 0}"
 }
 
+resource "null_resource" "subnet_tags" {
+  count = "${var.uuid != "" ? length(var.public_subnet_ids) : 0}"
+  provisioner "local-exec" {
+    command = "aws ec2 create-tags --resources ${element(var.public_subnet_ids, count.index)} --tags Key=kubernetes.io/cluster/service-instance_${var.uuid},Value=shared"
+  }
+
+  provisioner "local-exec" {
+    when = "destroy"
+    command = "aws ec2 delete-tags --resources ${element(var.public_subnet_ids, count.index)} --tags Key=kubernetes.io/cluster/service-instance_${var.uuid},Value=shared"
+  }
+}
+
 output "cluster_host" {
   value = "${var.cluster_host}"
 }
@@ -101,3 +121,4 @@ output "cluster_name" {
 output "kubernetes_master_ips" {
   value = "${var.kubernetes_master_ips}"
 }
+
