@@ -14,6 +14,11 @@ variable "instances" {
   type = "list"
 }
 
+variable "use_route53" {
+  default     = true
+  description = "Indicate whether or not to enable route53"
+}
+
 resource "aws_security_group" "k8s_api_security" {
   name        = "k8s-api-${var.cluster_name}-allow-all-${data.terraform_remote_state.pks.vpc_id}"
   description = "Allow all inbound traffic to k8s masters for ${var.cluster_name} API server"
@@ -75,7 +80,7 @@ resource "aws_route53_record" "pks_api_dns" {
     evaluate_target_health = true
   }
 
-  count = "${var.region == "us-gov-west-1" ? 0 : 1}"
+  count = "${var.use_route53 ? 1 : 0}"
 }
 
 data "terraform_remote_state" "pks" {
@@ -98,6 +103,3 @@ output "instances" {
   value = "${var.instances}"
 }
 
-output "region" {
-  value = "${var.region}"
-}
