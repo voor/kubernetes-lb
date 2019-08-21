@@ -8,7 +8,9 @@ terraform {
 
 variable "cluster_name" {}
 
-variable "cluster_host" {}
+variable "cluster_host" {
+  default     = ""
+}
 
 variable "ip_address" {
   type = "list"
@@ -19,6 +21,7 @@ variable "vpc_id" {
 }
 
 variable "tags" {
+  default = ""
   description = "PKS installation VPC id"
   type = "map"
 }
@@ -31,28 +34,6 @@ variable "dns_zone_id" {
 variable "public_subnet_ids" {
   description = "Public subnets where the ELB should be added."
   type = "list"
-}
-
-resource "aws_security_group" "k8s_api_security" {
-  name        = "k8s-api-${var.cluster_name}-allow-all-${var.vpc_id}"
-  description = "Allow all inbound traffic to k8s masters for ${var.cluster_name} API server"
-  vpc_id      = "${var.vpc_id}"
-
-  ingress {
-    from_port   = 8443
-    to_port     = 8443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    cidr_blocks = ["0.0.0.0/0"]
-    protocol    = "-1"
-    from_port   = 0
-    to_port     = 0
-  }
-
-  tags = "${merge(var.tags, map("Name", "k8s-api-${var.cluster_name}-allow-all-${var.vpc_id}"))}"
 }
 
 resource "aws_lb" "k8s_api" {
@@ -106,7 +87,7 @@ resource "aws_route53_record" "k8s_api_dns" {
     evaluate_target_health = true
   }
 
-  count = "${var.dns_zone_id != "" ? 1 : 0}"
+  count = "${var.dns_zone_id != "" && var.cluster_host != "" ? 1 : 0}"
 }
 
 output "cluster_host" {
