@@ -1,0 +1,18 @@
+#!/bin/bash -exu
+
+command -v jq >/dev/null 2>&1 || { echo >&2 "I require jq but it's not installed.  Aborting."; exit 1; }
+command -v terraform >/dev/null 2>&1 || { echo >&2 "I require terraform but it's not installed.  Aborting."; exit 1; }
+command -v pks >/dev/null 2>&1 || { echo >&2 "I require pks but it's not installed.  Aborting."; exit 1; }
+
+main() {
+
+    CLUSTER_NAME=$1
+    CLUSTER_HOST=$(pks cluster ${CLUSTER_NAME} --json | jq -c -r ".parameters.kubernetes_master_host")
+    CLUSTER_MASTERS=$(pks cluster system --json | jq -c -r .kubernetes_master_ips)
+
+    terraform init
+    terraform plan -out=pcf.tfplan -var "cluster_host=${CLUSTER_HOST}" -var "cluster_name=${CLUSTER_NAME}" -var "ip_address=${CLUSTER_MASTERS}"
+    # terraform apply "pcf.tfplan"
+}
+
+main "$@"

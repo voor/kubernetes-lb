@@ -12,6 +12,10 @@ terraform {
 
 variable "cluster_name" {}
 
+variable "env_name" {
+  default = ""
+}
+
 variable "cluster_host" {
   default     = ""
 }
@@ -45,7 +49,7 @@ variable "public_subnet_ids" {
 }
 
 resource "aws_lb" "k8s_api" {
-  name                             = "k8s-api-${var.cluster_name}"
+  name                             = "k8s-control-${var.env_name}-${var.cluster_name}"
   load_balancer_type               = "network"
   enable_cross_zone_load_balancing = true
   internal                         = false
