@@ -44,3 +44,7 @@ terraform apply "pcf.tfplan"
 ```
 
 You can retrieve most of this information from just the PKS cli, no need to go into bosh or ops manager!
+
+## Why does this work?
+
+According to the documentation for [Target Groups for your Network Load Balancers](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-target-groups.html) since we are specifiying a Private IP instead of an Instance ID, you will effectively lose the source IP for the client, and the VM allows traffic from everything in the VNET, so it sees the traffic as originating from the ENI for the NLB, and allows it through.
